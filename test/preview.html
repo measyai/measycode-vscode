@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!--
+  Renders the real media/chat.js and media/chat.css in a plain browser, so the
+  view can be looked at without launching an Extension Development Host.
+
+  Only two things are faked: acquireVsCodeApi (the one API the webview gets
+  from its host) and the --vscode-* theme variables, which are set below to
+  Dark Modern's values. Everything drawn is the code that ships.
+
+  Open directly: test/preview.html
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MeasyCode view preview</title>
+<style>
+  /* Dark Modern, as VS Code would inject it. */
+  :root {
+    --vscode-font-family: "Segoe UI", system-ui, sans-serif;
+    --vscode-font-size: 13px;
+    --vscode-editor-font-family: "Cascadia Code", Consolas, monospace;
+    --vscode-foreground: #cccccc;
+    --vscode-descriptionForeground: #9d9d9d;
+    --vscode-focusBorder: #0078d4;
+    --vscode-panel-border: #2b2b2b;
+    --vscode-editorWidget-background: #202020;
+    --vscode-textBlockQuote-background: #2a2a2a;
+    --vscode-textCodeBlock-background: #2a2a2a;
+    --vscode-textLink-foreground: #4daafc;
+    --vscode-errorForeground: #f85149;
+    --vscode-charts-green: #89d185;
+    --vscode-testing-iconPassed: #89d185;
+    --vscode-input-background: #313131;
+    --vscode-input-foreground: #cccccc;
+    --vscode-input-border: #3c3c3c;
+    --vscode-input-placeholderForeground: #989898;
+    --vscode-button-background: #0078d4;
+    --vscode-button-foreground: #ffffff;
+    --vscode-button-hoverBackground: #026ec1;
+    --vscode-button-secondaryBackground: #313131;
+    --vscode-button-secondaryForeground: #cccccc;
+    --vscode-button-secondaryHoverBackground: #3c3c3c;
+    --vscode-inputValidation-infoBorder: #0078d4;
+    --vscode-inputValidation-infoBackground: #1b2a3a;
+    --vscode-inputValidation-warningBorder: #b89500;
+    --vscode-inputValidation-warningBackground: #352d0a;
+  }
+  body { background: #181818; }
+  /* The side bar is narrow; previewing at full width would flatter the layout. */
+  html { max-width: 420px; border-right: 1px solid #2b2b2b; height: 100vh; }
+</style>
+<link rel="stylesheet" href="../media/chat.css">
+</head>
+<body>
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="login" class="login" hidden aria-label="Sign in">
+    <h1 class="login-title">Sign in to MeasyCode</h1>
+    <button id="login-browser" type="button" class="login-primary">Continue with MeasyAI</button>
+    <p class="login-hint">
+      Opens your browser and signs in with your account, so no key is created
+      and nothing lands on your clipboard.
+    </p>
+    <div id="login-device" class="login-device" hidden></div>
+    <div class="login-or"><span>or</span></div>
+    <label class="login-label" for="login-key">API key</label>
+    <input id="login-key" type="password" class="login-input" placeholder="msy_…" autocomplete="off" spellcheck="false">
+    <p id="login-error" class="login-error" hidden></p>
+    <button id="login-key-submit" type="button" class="login-secondary">Use this key</button>
+    <p class="login-hint">
+      MeasyCode does not create API keys for you. Make one at
+      measyai.com/app/api-keys and paste it here. It is stored in your editor's
+      secret storage, not in settings.
+    </p>
+  </section>
+
+  <main id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></main>
+  <div id="approval" class="approval" hidden></div>
+  <form id="composer" class="composer">
+    <textarea id="input" rows="1" placeholder="Ask MeasyCode…" aria-label="Message"></textarea>
+    <div class="composer-row">
+      <span id="meta" class="meta"></span>
+      <button id="send" type="submit" class="send">Send</button>
+    </div>
+  </form>
+
+<script>
+  // The single API a webview gets from its host.
+  const sent = [];
+  window.acquireVsCodeApi = () => ({
+    postMessage: (m) => { sent.push(m); console.log("→ extension", m); },
+  });
+  window.__sent = sent;
+</script>
+<script src="../media/chat.js"></script>
+<script>
+  // A realistic turn, in protocol order.
+  const script = [
+    { kind: "ready", model: "measyai/cipher", models: ["measyai/cipher"], dir: ".", auto: false, account: "jagerphillipp99@gmail.com" },
+    { kind: "user", text: "Add a retry to the webhook sender" },
+    { kind: "turn_start" },
+    { kind: "reasoning", text: "The sender is in internal/webhook. Retries probably belong next to the backoff that already exists there rather than in the caller." },
+    { kind: "delta", text: "I'll look at how the sender is structured first." },
+    { kind: "tool_start", name: "read", arg: "internal/webhook/sender.go" },
+    { kind: "tool_body", text: "func (s *Sender) Send(ctx context.Context, d Delivery) error {\n\tresp, err := s.client.Do(req)\n\tif err != nil {\n\t\treturn err\n\t}" },
+    { kind: "tool_result", summary: "148 lines", ok: true },
+    { kind: "delta", text: "\n\nThere's already a backoff helper, so the retry belongs beside it." },
+    { kind: "tool_start", name: "run", arg: "go test ./internal/webhook" },
+    { kind: "tool_body", text: "--- FAIL: TestSendRetries (0.01s)\n    sender_test.go:41: expected 3 attempts, got 1" },
+    { kind: "tool_result", summary: "exit 1", ok: false },
+    { kind: "approval_request", id: 1, name: "write internal/webhook/sender.go", text: "@@ -18,6 +18,11 @@\n-\tresp, err := s.client.Do(req)\n+\tresp, err := s.doWithRetry(ctx, req)" },
+  ];
+
+  // ?screen=login shows the signed-out state instead of a turn.
+  if (new URLSearchParams(location.search).get("screen") === "login") {
+    setTimeout(() => {
+      window.postMessage({ type: "agent", event: { kind: "auth_required" } }, "*");
+    }, 100);
+  } else {
+    let i = 0;
+    const step = () => {
+      if (i >= script.length) return;
+      window.postMessage({ type: "agent", event: script[i++] }, "*");
+      setTimeout(step, 60);
+    };
+    setTimeout(step, 100);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+{
+  "name": "measycode-vscode",
+  "displayName": "MeasyCode",
+  "description": "AI coding agent that lives in your editor.",
+  "version": "0.1.0",
+  "publisher": "measyai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/measyai/measycode-vscode.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["AI", "Chat", "Programming Languages"],
+  "keywords": ["ai", "agent", "measycode", "measyai", "assistant"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "measycode",
+          "title": "MeasyCode",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "measycode": [
+        {
+          "id": "measycode.chat",
+          "name": "Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "measycode.focus",
+        "title": "Focus Chat",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.restart",
+        "title": "Restart Agent",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.stop",
+        "title": "Stop Agent",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.reset",
+        "title": "Clear Conversation",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.signIn",
+        "title": "Sign In",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.useApiKey",
+        "title": "Sign In with an API Key",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.signOut",
+        "title": "Sign Out",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.pickModel",
+        "title": "Select Model",
+        "category": "MeasyCode"
+      },
+      {
+        "command": "measycode.askAboutSelection",
+        "title": "Ask MeasyCode About Selection",
+        "category": "MeasyCode"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "measycode.askAboutSelection",
+          "when": "editorHasSelection",
+          "group": "navigation@99"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "measycode.focus",
+        "key": "ctrl+shift+m",
+        "mac": "cmd+shift+m"
+      }
+    ],
+    "configuration": {
+      "title": "MeasyCode",
+      "properties": {
+        "measycode.binaryPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to the `measy` executable. Leave empty to find it on your `PATH`."
+        },
+        "measycode.showReasoning": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the model's chain of thought while it works."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node test/build.mjs && node test/out/harness.mjs .",
+    "vscode:prepublish": "npm run typecheck && node esbuild.mjs --production",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}

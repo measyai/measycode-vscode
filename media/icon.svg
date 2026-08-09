@@ -1,0 +1,7 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- The MeasyAI mark: four strokes rising left to right. Paths taken
+       verbatim from the web app's Logo component so the two cannot drift.
+       currentColor lets the activity bar tint it for the active theme. -->
+  <path d="M4 17V13M9.5 17V8M15 17V11M20.5 17V5"
+        stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+</svg>
