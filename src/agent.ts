@@ -44,7 +44,18 @@ export type AgentEvent =
   | { kind: "turn_stats"; millis?: number; tokens?: number }
   | { kind: "notice"; text: string; auto?: boolean }
   | { kind: "error"; text: string }
+  | { kind: "usage_info"; usage: UsageInfo }
   | { kind: "bye" };
+
+/** The rolling allowance, as GET /v1/me reports it through the agent. */
+export interface UsageInfo {
+  limit: number;
+  used: number;
+  remaining: number;
+  window_hours: number;
+  unlimited: boolean;
+  unit: string;
+}
 
 /** Everything the editor can say back. */
 export type AgentCommand =
@@ -55,7 +66,11 @@ export type AgentCommand =
   | { kind: "think"; allow: boolean }
   | { kind: "login" }
   | { kind: "logout" }
-  | { kind: "reset" };
+  | { kind: "reset" }
+  // Answered with usage_info. Binaries older than this command ignore it in
+  // silence — there is no reply and no error, so the caller must treat a
+  // missing answer as "not supported" rather than waiting on it.
+  | { kind: "usage" };
 
 /**
  * The installed CLI is `measy`; `measycode` is the name it had before the

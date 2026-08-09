@@ -24,7 +24,12 @@
   const composer = document.getElementById("composer");
   const input = document.getElementById("input");
   const send = document.getElementById("send");
-  const meta = document.getElementById("meta");
+
+  const modelPick = document.getElementById("model-pick");
+  const modelName = document.getElementById("model-name");
+  const usageChip = document.getElementById("usage");
+  const usageFill = document.getElementById("usage-fill");
+  const usageText = document.getElementById("usage-text");
 
   const login = document.getElementById("login");
   const loginBrowser = document.getElementById("login-browser");
@@ -97,8 +102,66 @@
     return { wrap, bubble };
   }
 
-  function setMeta(text) {
-    meta.textContent = text;
+  /** Same thresholds and shape as the CLI's compactCount, so the two agree. */
+  function compact(n) {
+    if (n >= 1e6) {
+      return (n / 1e6).toFixed(1) + "M";
+    }
+    if (n >= 1e3) {
+      return Math.round(n / 1e3) + "k";
+    }
+    return String(n);
+  }
+
+  modelPick.addEventListener("click", () => vscode.postMessage({ type: "pickModel" }));
+  usageChip.addEventListener("click", () => vscode.postMessage({ type: "refreshUsage" }));
+
+  function setModel(id, account) {
+    modelName.textContent = (id || "").replace(/^measyai\//, "") || "no model";
+    modelPick.title = account ? `${id} · ${account} — click to change` : "Change model";
+  }
+
+  /**
+   * Draws the rolling allowance.
+   *
+   * An unlimited plan gets a label and no bar: a full bar would say "you are
+   * at your limit" to anyone reading the shape rather than the words.
+   */
+  function setUsage(usage) {
+    if (!usage) {
+      usageChip.hidden = true;
+      return;
+    }
+
+    usageChip.hidden = false;
+    usageChip.classList.remove("warn", "danger");
+
+    if (usage.unlimited || usage.limit <= 0) {
+      usageFill.style.width = "0%";
+      usageFill.parentElement.hidden = true;
+      usageText.textContent = "unlimited";
+      usageChip.title = "No usage limit on this plan";
+      return;
+    }
+
+    usageFill.parentElement.hidden = false;
+
+    const used = Math.min(usage.used / usage.limit, 1);
+    usageFill.style.width = (used * 100).toFixed(1) + "%";
+    usageText.textContent = compact(usage.remaining) + " left";
+
+    if (used >= 0.9) {
+      usageChip.classList.add("danger");
+    } else if (used >= 0.75) {
+      usageChip.classList.add("warn");
+    }
+
+    const window = usage.window_hours
+      ? `, rolling ${usage.window_hours}-hour window`
+      : "";
+    usageChip.title =
+      `${compact(usage.used)} of ${compact(usage.limit)} ${usage.unit || "tokens"} used` +
+      `${window}. Click to refresh.`;
   }
 
   function setBusy(busy) {
@@ -265,18 +328,20 @@
 
   function onAgentEvent(event) {
     switch (event.kind) {
-      case "ready": {
+      case "ready":
         hideBanner();
         hideLogin();
-        const model = (event.model || "").replace(/^measyai\//, "");
-        const who = event.account ? " · " + event.account : "";
-        setMeta(model + who);
+        setModel(event.model, event.account);
         break;
-      }
 
       case "auth_required":
-        setMeta("");
+        setModel("", "");
+        setUsage(null);
         showLogin();
+        break;
+
+      case "usage_info":
+        setUsage(event.usage);
         break;
 
       case "auth_prompt":
@@ -451,7 +516,19 @@
         const line = el("div", "notice");
         line.textContent = message.reason;
         append(line);
-        setMeta("");
+        setModel("", "");
+        setUsage(null);
+        break;
+      }
+
+      case "usageUnsupported": {
+        // Said once, and only after the timeout: an absent number otherwise
+        // reads as a broken extension rather than as an older CLI.
+        usageChip.hidden = true;
+        const line = el("div", "notice");
+        line.textContent =
+          "Token usage needs a newer MeasyCode — the installed one does not report it yet.";
+        append(line);
         break;
       }
 

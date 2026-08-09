@@ -79,7 +79,15 @@
   <form id="composer" class="composer">
     <textarea id="input" rows="1" placeholder="Ask MeasyCode…" aria-label="Message"></textarea>
     <div class="composer-row">
-      <span id="meta" class="meta"></span>
+      <button id="model-pick" type="button" class="chip" title="Change model">
+        <span id="model-name">…</span>
+        <span class="caret" aria-hidden="true">▾</span>
+      </button>
+      <button id="usage" type="button" class="chip usage" hidden
+              title="Rolling allowance — click to refresh">
+        <span class="usage-bar" aria-hidden="true"><span id="usage-fill"></span></span>
+        <span id="usage-text"></span>
+      </button>
       <button id="send" type="submit" class="send">Send</button>
     </div>
   </form>
@@ -109,6 +117,8 @@
     { kind: "tool_body", text: "--- FAIL: TestSendRetries (0.01s)\n    sender_test.go:41: expected 3 attempts, got 1" },
     { kind: "tool_result", summary: "exit 1", ok: false },
     { kind: "approval_request", id: 1, name: "write internal/webhook/sender.go", text: "@@ -18,6 +18,11 @@\n-\tresp, err := s.client.Do(req)\n+\tresp, err := s.doWithRetry(ctx, req)" },
+    // Exactly what the live API returned for this account.
+    { kind: "usage_info", usage: { limit: 50000000, used: 6200000, remaining: 43800000, window_hours: 5, unlimited: false, unit: "tokens" } },
   ];
 
   // ?screen=login shows the signed-out state instead of a turn.

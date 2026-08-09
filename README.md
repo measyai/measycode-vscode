@@ -71,7 +71,7 @@ needs a real directory, so an empty window will ask you to open a folder first.
 | Command | |
 |---|---|
 | `MeasyCode: Focus Chat` | Open the view |
-| `MeasyCode: Select Model` | Switch models — the list comes from your account |
+| `MeasyCode: Select Model` | Switch models — also the chip in the composer |
 | `MeasyCode: Clear Conversation` | Drop the context, keep the session |
 | `MeasyCode: Restart Agent` | Stop the process and start a fresh one |
 | `MeasyCode: Sign In` | Browser device flow |
@@ -80,6 +80,13 @@ needs a real directory, so an empty window will ask you to open a folder first.
 
 Select code in an editor and choose **Ask MeasyCode About Selection** from the
 context menu to drop it into the composer with its file and line range.
+
+Two chips sit above the Send button. The first is the current model — click it
+for the picker, filled from your account's own catalogue rather than a list
+baked into the extension. The second is what is left of your rolling token
+allowance; it refreshes after each turn, turns amber past three quarters and
+red past nine tenths, and reads simply "unlimited" on a plan without a cap. It
+appears only when the installed MeasyCode is new enough to report usage.
 
 Writes ask for approval before they happen. The dialog opens with **Deny**
 focused, not Allow: the agent is asking to change your files, and a stray Enter

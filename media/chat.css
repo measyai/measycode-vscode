@@ -445,17 +445,88 @@ body {
 .composer-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.meta {
-  flex: 1 1 auto;
-  min-width: 0;
+/* Send is pushed to the end of whatever row it lands on, so the chips can
+   wrap on a narrow side bar without it drifting into the middle. */
+.composer-row .send {
+  margin-left: auto;
+}
+
+/* Chips are quiet by default: the model and the allowance are status first
+   and controls second, and two filled buttons next to Send would read as
+   three equal actions. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
+  background: transparent;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+}
+
+.chip:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, var(--vscode-editorWidget-background));
+}
+
+.chip[hidden] {
+  display: none;
+}
+
+.chip .caret {
+  opacity: 0.7;
+  font-size: 9px;
+}
+
+#model-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.usage-bar {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--vscode-panel-border);
+  flex: 0 0 auto;
+}
+
+.usage-bar > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--vscode-charts-green, #89d185);
+  transition: width 200ms ease-out;
+}
+
+/* Colour carries the same three steps the terminal's bar uses, so "nearly
+   out" looks the same in both places. */
+.usage.warn .usage-bar > span {
+  background: var(--vscode-charts-yellow, #cca700);
+}
+
+.usage.danger .usage-bar > span {
+  background: var(--vscode-charts-red, #f14c4c);
+}
+
+.usage.danger #usage-text {
+  color: var(--vscode-errorForeground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usage-bar > span {
+    transition: none;
+  }
 }
 
 button {

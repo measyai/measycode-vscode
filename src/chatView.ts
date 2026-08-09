@@ -20,6 +20,8 @@ type ViewMessage =
   | { type: "login" }
   | { type: "apiKey"; key: string }
   | { type: "signOut" }
+  | { type: "pickModel" }
+  | { type: "refreshUsage" }
   | { type: "reset" }
   | { type: "restart" };
 
@@ -33,6 +35,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   /** Replayed when the view is rebuilt, so a reopened panel is not blank. */
   private lastReady?: Extract<AgentEvent, { kind: "ready" }>;
+  /** Same, for the allowance — it is only reported when asked for. */
+  private lastUsage?: Extract<AgentEvent, { kind: "usage_info" }>;
+  /**
+   * undefined until we find out. A binary older than the `usage` command
+   * ignores it silently, so "no answer" is the only signal that it is not
+   * supported — hence the timer rather than an error path.
+   */
+  private usageSupported?: boolean;
+  private usageProbe?: ReturnType<typeof setTimeout>;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -118,7 +129,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (this.lastReady) {
           this.post({ type: "agent", event: this.lastReady });
         }
+        if (this.lastUsage) {
+          this.post({ type: "agent", event: this.lastUsage });
+        }
         await this.ensureRunning();
+        break;
+
+      case "pickModel":
+        // Handed to the editor's own quick pick rather than drawn in the
+        // webview: it comes with filtering, keyboard navigation and the
+        // platform's screen-reader behaviour already correct.
+        await vscode.commands.executeCommand("measycode.pickModel");
+        break;
+
+      case "refreshUsage":
+        this.requestUsage();
         break;
 
       case "prompt":
@@ -206,12 +231,49 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.refreshStatus();
       this.applyReasoningPreference();
       this.warnIfCatalogueMissing(event);
+      this.requestUsage();
     }
     if (event.kind === "auth_required") {
       this.lastReady = undefined;
+      this.lastUsage = undefined;
       this.refreshStatus();
     }
+    if (event.kind === "usage_info") {
+      this.lastUsage = event;
+      this.usageSupported = true;
+      clearTimeout(this.usageProbe);
+    }
+    // The allowance moves only when tokens are spent, so asking after a turn
+    // is both sufficient and the moment the number is most worth seeing.
+    if (event.kind === "turn_end") {
+      this.requestUsage();
+    }
     this.post({ type: "agent", event });
+  }
+
+  /**
+   * Asks for the allowance, and finds out once whether asking works at all.
+   *
+   * The first request starts a timer. If nothing comes back the installed
+   * binary predates the command, and the view is told so — otherwise the
+   * missing number reads as a bug in the extension rather than as an old CLI.
+   * Checked once per session; after that a silent answer is just a slow one.
+   */
+  private requestUsage(): void {
+    if (this.usageSupported === false || !this.agent.running) {
+      return;
+    }
+
+    this.agent.send({ kind: "usage" });
+
+    if (this.usageSupported === undefined && this.usageProbe === undefined) {
+      this.usageProbe = setTimeout(() => {
+        if (this.usageSupported === undefined) {
+          this.usageSupported = false;
+          this.post({ type: "usageUnsupported" });
+        }
+      }, 20_000);
+    }
   }
 
   /**
@@ -352,7 +414,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     <textarea id="input" rows="1" placeholder="Ask MeasyCode…"
               aria-label="Message" autocomplete="off"></textarea>
     <div class="composer-row">
-      <span id="meta" class="meta"></span>
+      <button id="model-pick" type="button" class="chip" title="Change model">
+        <span id="model-name">…</span>
+        <span class="caret" aria-hidden="true">▾</span>
+      </button>
+      <button id="usage" type="button" class="chip usage" hidden
+              title="Rolling allowance — click to refresh">
+        <span class="usage-bar" aria-hidden="true"><span id="usage-fill"></span></span>
+        <span id="usage-text"></span>
+      </button>
       <button id="send" type="submit" class="send">Send</button>
     </div>
   </form>
