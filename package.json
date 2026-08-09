@@ -5,6 +5,11 @@
   "version": "0.1.0",
   "publisher": "measyai",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#090A0E",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/measyai/measycode-vscode.git"
@@ -12,8 +17,18 @@
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["AI", "Chat", "Programming Languages"],
-  "keywords": ["ai", "agent", "measycode", "measyai", "assistant"],
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "measycode",
+    "measyai",
+    "assistant"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -124,6 +139,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.24.0",
     "typescript": "^5.7.0"
   }
