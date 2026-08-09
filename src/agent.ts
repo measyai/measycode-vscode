@@ -19,6 +19,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import * as vscode from "vscode";
 
+import { log } from "./log";
+
 /** Everything the agent can say. `kind` is the discriminator. */
 export type AgentEvent =
   | {
@@ -113,6 +115,8 @@ export class Agent implements vscode.Disposable {
     }
 
     const binary = await resolveBinary();
+    log(`starting "${binary}" -jsonl -dir ${workspace}${apiKey ? " (with API key)" : ""}`);
+
     const child = spawn(binary, ["-jsonl", "-dir", workspace], {
       stdio: ["pipe", "pipe", "pipe"],
       // Without this a console window flashes up on every start on Windows,
@@ -270,7 +274,12 @@ export class Agent implements vscode.Disposable {
     // first line looks exactly like a hung agent.
     const clean = line.replace(/^﻿/, "");
     try {
-      this.eventEmitter.fire(JSON.parse(clean) as AgentEvent);
+      const event = JSON.parse(clean) as AgentEvent;
+      // Deltas are the bulk of the traffic and say nothing useful here.
+      if (event.kind !== "delta" && event.kind !== "reasoning") {
+        log(`← ${event.kind}`);
+      }
+      this.eventEmitter.fire(event);
     } catch {
       // Surfaced rather than dropped: silence is the one failure mode that
       // leaves a user staring at a spinner.

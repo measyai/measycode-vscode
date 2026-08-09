@@ -30,3 +30,12 @@ export const workspace = {
     get: (key, fallback) => globalThis.__settings?.[key] ?? fallback,
   }),
 };
+
+/** The log channel writes into an array the harness can assert on. */
+export const window = {
+  createOutputChannel: () => ({
+    appendLine: (line) => (globalThis.__log ??= []).push(line),
+    show: () => {},
+    dispose: () => {},
+  }),
+};

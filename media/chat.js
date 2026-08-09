@@ -37,6 +37,11 @@
   const loginKey = document.getElementById("login-key");
   const loginKeySubmit = document.getElementById("login-key-submit");
   const loginError = document.getElementById("login-error");
+  const loginOpenKeys = document.getElementById("login-open-keys");
+
+  loginOpenKeys.addEventListener("click", () =>
+    vscode.postMessage({ type: "openUrl", url: "https://measyai.com/app/api-keys" }),
+  );
 
   /** The assistant text block deltas are currently flowing into. */
   let streaming = null;
@@ -265,20 +270,39 @@
     loginKey.removeAttribute("aria-invalid");
   });
 
+  /**
+   * The device-flow half of signing in.
+   *
+   * No <a href> anywhere: a webview refuses to navigate, so a link here looks
+   * clickable and does nothing — which is exactly what "I don't get sent to
+   * the website" feels like. Both buttons hand the work to the extension,
+   * which can actually open a browser and reach the clipboard.
+   */
   function showDeviceCode(url, code) {
     loginDevice.replaceChildren();
 
     const p = el("div");
-    p.textContent = "Approve this code in your browser:";
+    p.textContent = "Your browser should have opened. Approve this code:";
 
     const codeEl = el("code");
     codeEl.textContent = code;
 
-    const link = el("a");
-    link.href = url;
-    link.textContent = url;
+    const row = el("div", "login-device-actions");
 
-    loginDevice.append(p, codeEl, el("div"), link);
+    const open = el("button");
+    open.textContent = "Open browser again";
+    open.addEventListener("click", () => vscode.postMessage({ type: "openUrl", url }));
+
+    const copy = el("button", "secondary");
+    copy.textContent = "Copy code";
+    copy.addEventListener("click", () => vscode.postMessage({ type: "copy", text: code }));
+
+    row.append(open, copy);
+
+    const where = el("div", "login-device-url");
+    where.textContent = url;
+
+    loginDevice.append(p, codeEl, where, row);
     loginDevice.hidden = false;
   }
 

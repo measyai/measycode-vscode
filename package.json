@@ -71,6 +71,11 @@
         "category": "MeasyCode"
       },
       {
+        "command": "measycode.showLog",
+        "title": "Show Log",
+        "category": "MeasyCode"
+      },
+      {
         "command": "measycode.signIn",
         "title": "Sign In",
         "category": "MeasyCode"

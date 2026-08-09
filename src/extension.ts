@@ -2,8 +2,12 @@ import * as vscode from "vscode";
 
 import { Agent } from "./agent";
 import { ChatViewProvider } from "./chatView";
+import { initLog, log, showLog } from "./log";
 
 export function activate(context: vscode.ExtensionContext): void {
+  initLog(context);
+  log("MeasyCode activated");
+
   const agent = new Agent();
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -39,6 +43,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("measycode.stop", () => agent.stop()),
+
+    vscode.commands.registerCommand("measycode.showLog", () => showLog()),
 
     vscode.commands.registerCommand("measycode.reset", () => provider.reset()),
 

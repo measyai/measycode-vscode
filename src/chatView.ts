@@ -10,6 +10,7 @@
 import * as vscode from "vscode";
 
 import { Agent, type AgentCommand, type AgentEvent } from "./agent";
+import { log } from "./log";
 
 /** Messages the webview sends up. */
 type ViewMessage =
@@ -22,6 +23,8 @@ type ViewMessage =
   | { type: "signOut" }
   | { type: "pickModel" }
   | { type: "refreshUsage" }
+  | { type: "openUrl"; url: string }
+  | { type: "copy"; text: string }
   | { type: "reset" }
   | { type: "restart" };
 
@@ -135,6 +138,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         await this.ensureRunning();
         break;
 
+      case "openUrl":
+        // A plain <a href> in a webview navigates nowhere — the frame refuses
+        // it — so the click has to come back here to be opened for real.
+        await vscode.env.openExternal(vscode.Uri.parse(message.url));
+        break;
+
+      case "copy":
+        await vscode.env.clipboard.writeText(message.text);
+        void vscode.window.showInformationMessage("Code copied.");
+        break;
+
       case "pickModel":
         // Handed to the editor's own quick pick rather than drawn in the
         // webview: it comes with filtering, keyboard navigation and the
@@ -237,6 +251,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.lastReady = undefined;
       this.lastUsage = undefined;
       this.refreshStatus();
+    }
+    if (event.kind === "auth_prompt") {
+      // The CLI does try to open a browser itself, through rundll32, and
+      // ignores the result on purpose — a machine with no browser is normal
+      // for it. Inside an editor that is not good enough: the child is
+      // spawned with no window, and on Remote or a Codespace the browser
+      // that matters is not even on the same machine. openExternal is the
+      // one call that knows where the user actually is.
+      void vscode.env.openExternal(vscode.Uri.parse(event.url));
+      log(`opening ${event.url} for sign-in`);
     }
     if (event.kind === "usage_info") {
       this.lastUsage = event;
@@ -400,10 +424,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       Use this key
     </button>
     <p class="login-hint">
-      MeasyCode does not create API keys for you. Make one at
-      measyai.com/app/api-keys and paste it here. It is stored in your editor's
-      secret storage, not in settings.
+      MeasyCode does not create API keys for you — a key you did not knowingly
+      make is one you will not dare revoke later. Keys are stored in your
+      editor's secret storage, never in settings.
     </p>
+    <button id="login-open-keys" type="button" class="linkish">
+      Open measyai.com/app/api-keys
+    </button>
   </section>
 
   <main id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></main>
