@@ -214,6 +214,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return true;
     }
 
+    // Restricted Mode is the one failure that looks like a broken extension.
+    // The agent spawns a process that edits files and runs commands, so VS
+    // Code is right to hold it back — but without saying so, the view just
+    // sits there and the sign-in button does nothing.
+    if (!vscode.workspace.isTrusted) {
+      log("workspace is not trusted — agent not started");
+      this.post({
+        type: "blocked",
+        text:
+          "This folder is open in Restricted Mode. MeasyCode edits files and runs commands, so it stays off until you trust the folder — use \"Workspaces: Manage Workspace Trust\" to change that.",
+      });
+      return false;
+    }
+
     const folder = vscode.workspace.workspaceFolders?.[0];
     if (!folder) {
       // `-dir` needs a real directory, and an agent pointed at nothing would

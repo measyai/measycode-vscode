@@ -114,23 +114,7 @@ export class Agent implements vscode.Disposable {
       throw new Error("An agent is already running.");
     }
 
-    const binary = await resolveBinary();
-    log(`starting "${binary}" -jsonl -dir ${workspace}${apiKey ? " (with API key)" : ""}`);
-
-    const child = spawn(binary, ["-jsonl", "-dir", workspace], {
-      stdio: ["pipe", "pipe", "pipe"],
-      // Without this a console window flashes up on every start on Windows,
-      // because the child is a console application and Windows gives it one.
-      windowsHide: true,
-      // MEASYAI_API_KEY overrides the credential file, which is the CLI's own
-      // documented rule for "an explicit export is a deliberate act". It is
-      // the only route to key-based sign-in: the jsonl protocol's `login`
-      // command runs the browser flow and nothing else.
-      //
-      // Only set when there is one. An empty value is still a value, and it
-      // would shadow a perfectly good stored session with nothing.
-      env: apiKey ? { ...process.env, MEASYAI_API_KEY: apiKey } : process.env,
-    }) as ChildProcessWithoutNullStreams;
+    const child = await this.spawnFirstThatExists(workspace, apiKey);
 
     // setEncoding matters beyond convenience: without it a multi-byte UTF-8
     // character split across two chunks decodes as two replacement characters.
@@ -152,12 +136,11 @@ export class Agent implements vscode.Disposable {
       }
     });
 
+    // Startup failures are handled by spawnFirstThatExists; anything arriving
+    // here happened to an agent that was already running.
     child.on("error", (err: NodeJS.ErrnoException) => {
-      const message =
-        err.code === "ENOENT"
-          ? `Could not start "${binary}". Is MeasyCode installed and on your PATH? ` +
-            `Set measycode.binaryPath if it lives somewhere else.`
-          : `Could not start "${binary}": ${err.message}`;
+      const message = `The agent failed: ${err.message}`;
+      log(message);
       this.eventEmitter.fire({ kind: "error", text: message });
       this.teardown(message);
     });
@@ -249,6 +232,67 @@ export class Agent implements vscode.Disposable {
   }
 
   /**
+   * Spawns the agent, trying the alternative binary name if the first is not
+   * installed.
+   *
+   * This used to probe first, by running `<name> -whoami` and seeing whether
+   * it started. That was wrong twice over: `-whoami` is not an existence
+   * check but an authenticated call to /v1/me, which measured at **twelve
+   * seconds** here — and the probe was awaited before the real spawn, so the
+   * agent could not start until it finished. The view sat empty the whole
+   * time, which is indistinguishable from a broken extension.
+   *
+   * Spawning and catching ENOENT answers the same question immediately, with
+   * no network and no second process.
+   */
+  private async spawnFirstThatExists(
+    workspace: string,
+    apiKey?: string,
+  ): Promise<ChildProcessWithoutNullStreams> {
+    const configured = configuredBinaryPath();
+    const candidates = configured ? [configured] : [...BINARY_CANDIDATES];
+
+    const options: Parameters<typeof spawn>[2] = {
+      stdio: ["pipe", "pipe", "pipe"],
+      // Without this a console window flashes up on every start on Windows,
+      // because the child is a console application and Windows gives it one.
+      windowsHide: true,
+      // MEASYAI_API_KEY overrides the credential file, which is the CLI's own
+      // documented rule for "an explicit export is a deliberate act". It is
+      // the only route to key-based sign-in: the jsonl protocol's `login`
+      // command runs the browser flow and nothing else.
+      //
+      // Only set when there is one. An empty value is still a value, and it
+      // would shadow a perfectly good stored session with nothing.
+      env: apiKey ? { ...process.env, MEASYAI_API_KEY: apiKey } : process.env,
+    };
+
+    let lastError: NodeJS.ErrnoException | undefined;
+
+    for (const binary of candidates) {
+      log(`starting "${binary}" -jsonl -dir ${workspace}${apiKey ? " (with API key)" : ""}`);
+      try {
+        return await spawnOrThrow(binary, ["-jsonl", "-dir", workspace], options);
+      } catch (err) {
+        lastError = err as NodeJS.ErrnoException;
+        if (lastError.code !== "ENOENT") {
+          break; // it exists but would not start; trying another name is noise
+        }
+        log(`"${binary}" is not installed`);
+      }
+    }
+
+    const detail =
+      lastError?.code === "ENOENT"
+        ? `Could not find ${candidates.map((c) => `"${c}"`).join(" or ")}. ` +
+          "Is MeasyCode installed and on your PATH? Set measycode.binaryPath if it lives elsewhere."
+        : `Could not start MeasyCode: ${lastError?.message ?? "unknown error"}`;
+
+    log(detail);
+    throw new Error(detail);
+  }
+
+  /**
    * Splits the stream into protocol lines.
    *
    * A `data` chunk is whatever the OS handed over — it can hold half a line,
@@ -298,47 +342,28 @@ export class Agent implements vscode.Disposable {
   }
 }
 
-/** Probed once and remembered: the answer cannot change while the window lives. */
-let cachedBinary: string | undefined;
-
-/**
- * The configured path if there is one, otherwise whichever candidate name
- * actually exists.
- *
- * Falling back matters for installs that predate the rename — `measycode` was
- * the original name, and someone who never re-ran the installer still has it.
- */
-export async function resolveBinary(): Promise<string> {
-  const configured = vscode.workspace
+/** The `measycode.binaryPath` setting, trimmed; empty means "use the PATH". */
+function configuredBinaryPath(): string {
+  return vscode.workspace
     .getConfiguration("measycode")
     .get<string>("binaryPath", "")
     .trim();
-
-  if (configured) {
-    return configured;
-  }
-  if (cachedBinary) {
-    return cachedBinary;
-  }
-
-  for (const name of BINARY_CANDIDATES) {
-    if (await canRun(name)) {
-      cachedBinary = name;
-      return name;
-    }
-  }
-
-  // Neither answered. Return the preferred name anyway so the spawn fails with
-  // the ENOENT message above, which names the setting that fixes it.
-  return BINARY_CANDIDATES[0];
 }
 
-/** Whether the binary exists at all — not whether anyone is signed in. */
-function canRun(name: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const probe = spawn(name, ["-whoami"], { stdio: "ignore", windowsHide: true });
-    probe.on("error", () => resolve(false));
-    // Any exit code means it ran; a signed-out CLI still counts as installed.
-    probe.on("exit", () => resolve(true));
+/**
+ * spawn as a promise that settles on the first thing the child does: Node's
+ * `spawn` event when it started, `error` when it could not. Without this the
+ * caller has no way to tell "not installed" from "installed and quiet", since
+ * spawn itself throws nothing for a missing executable.
+ */
+function spawnOrThrow(
+  binary: string,
+  args: string[],
+  options: Parameters<typeof spawn>[2],
+): Promise<ChildProcessWithoutNullStreams> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(binary, args, options) as ChildProcessWithoutNullStreams;
+    child.once("spawn", () => resolve(child));
+    child.once("error", reject);
   });
 }

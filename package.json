@@ -30,6 +30,12 @@
     "assistant"
   ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "MeasyCode runs an agent that reads and edits files in this folder and executes commands in it. That is not something to do in a folder you have not decided to trust."
+    }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [

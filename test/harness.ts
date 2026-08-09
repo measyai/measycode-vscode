@@ -101,14 +101,22 @@ async function testRealBinary(workspace: string): Promise<void> {
     });
   });
 
+  const startedAt = Date.now();
   try {
     await agent.start(workspace);
   } catch (err) {
     check("agent starts", false, String(err));
     return;
   }
+  const startMs = Date.now() - startedAt;
 
   check("agent reports running", agent.running);
+
+  // Guards the bug this replaced: start() used to await `measy -whoami` as an
+  // existence check. That is an authenticated call to /v1/me and took twelve
+  // seconds, during which the view sat empty and looked broken. Spawning is
+  // near-instant, so anything above a second means a probe crept back in.
+  check("start does not block on a network call", startMs < 1000, `${startMs}ms`);
 
   const first = await ready;
   check("handshake arrives", first !== undefined, "timed out after 30s");
