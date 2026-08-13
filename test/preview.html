@@ -68,10 +68,12 @@
     <p id="login-error" class="login-error" hidden></p>
     <button id="login-key-submit" type="button" class="login-secondary">Use this key</button>
     <p class="login-hint">
-      MeasyCode does not create API keys for you. Make one at
-      measyai.com/app/api-keys and paste it here. It is stored in your editor's
-      secret storage, not in settings.
+      MeasyCode does not create API keys for you. Keys are stored in your
+      editor's secret storage, never in settings.
     </p>
+    <button id="login-open-keys" type="button" class="linkish">
+      Open measyai.com/app/api-keys
+    </button>
   </section>
 
   <main id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></main>
@@ -100,6 +102,7 @@
   });
   window.__sent = sent;
 </script>
+<script src="../media/markdown.js"></script>
 <script src="../media/chat.js"></script>
 <script>
   // A realistic turn, in protocol order.
@@ -112,7 +115,7 @@
     { kind: "tool_start", name: "read", arg: "internal/webhook/sender.go" },
     { kind: "tool_body", text: "func (s *Sender) Send(ctx context.Context, d Delivery) error {\n\tresp, err := s.client.Do(req)\n\tif err != nil {\n\t\treturn err\n\t}" },
     { kind: "tool_result", summary: "148 lines", ok: true },
-    { kind: "delta", text: "\n\nThere's already a backoff helper, so the retry belongs beside it." },
+    { kind: "delta", text: "\n\n**Files created:**\n\n1. `sender.go` — retry with backoff\n2. `sender_test.go` — covers 3 attempts\n\n```go\nfunc (s *Sender) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {\n\tfor attempt := 0; attempt < 3; attempt++ {\n\t\tresp, err := s.client.Do(req)\n\t\tif err == nil {\n\t\t\treturn resp, nil\n\t\t}\n\t}\n}\n```\n\nSee [the docs](https://measyai.com/docs) for *retry* semantics." },
     { kind: "tool_start", name: "run", arg: "go test ./internal/webhook" },
     { kind: "tool_body", text: "--- FAIL: TestSendRetries (0.01s)\n    sender_test.go:41: expected 3 attempts, got 1" },
     { kind: "tool_result", summary: "exit 1", ok: false },

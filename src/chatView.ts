@@ -389,6 +389,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const asset = (...parts: string[]) =>
       webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, ...parts));
 
+    const markdown = asset("media", "markdown.js");
     const script = asset("media", "chat.js");
     const style = asset("media", "chat.css");
     const nonce = makeNonce();
@@ -468,6 +469,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     </div>
   </form>
 
+  <script nonce="${nonce}" src="${markdown}"></script>
   <script nonce="${nonce}" src="${script}"></script>
 </body>
 </html>`;

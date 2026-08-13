@@ -89,12 +89,31 @@
     }
   }
 
-  /** Any block other than assistant text breaks the current stream target. */
+  /**
+   * Any block other than assistant text breaks the current stream target.
+   *
+   * The finished block is re-rendered as Markdown here rather than on every
+   * delta: parsing a growing answer once per token is wasteful, and a code
+   * fence is not valid until its closing ``` arrives, so a half-streamed block
+   * would flicker between "paragraph" and "code" as it grew.
+   */
   function interrupt() {
-    if (streaming) {
-      streaming.classList.remove("streaming");
-      streaming = null;
+    if (!streaming) {
+      return;
     }
+    streaming.classList.remove("streaming");
+
+    const raw = streaming.textContent;
+    if (raw.trim()) {
+      streaming.replaceChildren(
+        window.renderMarkdown(
+          raw,
+          (url) => vscode.postMessage({ type: "openUrl", url }),
+          (text) => vscode.postMessage({ type: "copy", text }),
+        ),
+      );
+    }
+    streaming = null;
   }
 
   function message(role, text) {

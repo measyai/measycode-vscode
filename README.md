@@ -106,10 +106,11 @@ terminal about either one.
 
 ## Known limitations
 
-- **The transcript is plain text.** Markdown and code blocks arrive as written
-  rather than rendered — readable, but not pretty. Rendering model output as
-  HTML is a decision that deserves its own care around sanitisation, so it is
-  not in this version.
+- **Markdown is rendered, but not all of it.** Fenced code, inline code, bold,
+  italic, headings, lists, blockquotes and links. Tables, images and footnotes
+  stay as text. Nothing is ever built as an HTML string — the renderer only
+  creates elements and sets `textContent` — so model output cannot introduce
+  markup, and a `javascript:` link stays inert text.
 - **One workspace folder.** The agent is started against the first folder of a
   multi-root workspace.
 - **One session per window.** The protocol is a single conversation on a single

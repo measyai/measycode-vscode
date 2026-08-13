@@ -287,6 +287,118 @@ body {
   }
 }
 
+/* ── rendered markdown ──────────────────────────────────── */
+
+/* The bubble keeps pre-wrap so soft line breaks inside a paragraph survive;
+   these rules only supply the block rhythm the browser defaults get wrong at
+   this size. */
+.md-p,
+.md-h,
+.md-list,
+.md-quote,
+.md-code {
+  margin: 0 0 8px;
+}
+
+.bubble > :last-child {
+  margin-bottom: 0;
+}
+
+.md-h {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.md-list {
+  padding-left: 20px;
+}
+
+.md-list li {
+  margin-bottom: 2px;
+}
+
+.md-quote {
+  padding-left: 8px;
+  border-left: 2px solid var(--vscode-panel-border);
+  color: var(--vscode-descriptionForeground);
+}
+
+.bubble code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background);
+}
+
+.md-code {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md-code-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 2px 8px;
+  background: var(--vscode-editorWidget-background, transparent);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.md-code-lang {
+  flex: 1 1 auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.md-copy {
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background: transparent;
+  border: none;
+}
+
+.md-copy:hover {
+  color: var(--vscode-foreground);
+  background: transparent;
+  text-decoration: underline;
+}
+
+.md-code pre {
+  margin: 0;
+  padding: 8px;
+  overflow-x: auto;
+  /* The block sets its own wrapping: a code sample must not inherit the
+     bubble's pre-wrap, or every long line folds and the indentation stops
+     meaning anything. */
+  white-space: pre;
+}
+
+.md-code pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.md-link {
+  padding: 0;
+  font-size: inherit;
+  color: var(--vscode-textLink-foreground);
+  background: transparent;
+  border: none;
+}
+
+.md-link:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
 /* ── reasoning ──────────────────────────────────────────── */
 
 .reasoning {

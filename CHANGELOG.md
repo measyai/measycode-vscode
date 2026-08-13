@@ -21,8 +21,13 @@ First public release.
   command; older builds simply do not show it.
 - **Ask MeasyCode About Selection** from the editor context menu.
 
+- **Rendered Markdown** in answers: fenced code with a copy button, inline
+  code, bold, italic, headings, lists, quotes and links. Built by creating
+  elements rather than by assembling HTML, so model output cannot inject
+  markup.
+
 ### Known limitations
 
-- The transcript is plain text; Markdown and code blocks are not rendered.
+- Markdown tables, images and footnotes are shown as text.
 - The agent runs against the first folder of a multi-root workspace.
 - One session per window.
