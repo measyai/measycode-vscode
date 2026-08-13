@@ -2,7 +2,7 @@
   "name": "measycode-vscode",
   "displayName": "MeasyCode",
   "description": "AI coding agent that lives in your editor.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "measyai",
   "license": "MIT",
   "icon": "media/icon.png",
